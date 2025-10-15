@@ -43,7 +43,7 @@ public class TeleOpMode extends OpMode {
 
         forward = gamepad1.left_stick_y;
         strafe = gamepad1.left_stick_x;
-        rotate = gamepad1.right_stick_x;
+        rotate = -gamepad1.right_stick_x;
         speedSwitch = gamepad1.left_stick_button;
         intakeSpeed = 1;
         loadSpeed = 1;
@@ -53,33 +53,36 @@ public class TeleOpMode extends OpMode {
         shootSwitch = gamepad1.a;
 
 
-        if (speedSwitch) {
+        if(speedSwitch) {
 
-            drive.driveFieldRelative(forward*0.5, strafe*0.5, rotate*0.5);
-        } else {
+            drive.drive(forward*0.5, strafe*0.5, rotate*0.5);
+        }
+        else if(!speedSwitch) {
 
-            drive.driveFieldRelative(forward, strafe, rotate);
+            drive.drive(forward, strafe, rotate);
         }
 
-        if (intakeSwitch) {
+        if(intakeSwitch) {
 
             intakeSpeed = 0;
-        } else {
+        }
+        else if(!intakeSwitch){
 
             intakeSpeed = 1;
         }
 
-        if (loadSwitch) {
+        if(loadSwitch) {
 
             loadSpeed = 1;
-        } else {
+        }
+        else if(!loadSwitch){
 
             loadSpeed = 0.5;
         }
 
         intake.intake(intakeSpeed, loadSpeed);
 
-        if (shootSwitch) {
+        if(shootSwitch) {
             shoot.shoot(shootSpeed);
         }
 

@@ -13,7 +13,7 @@ public class DoubleFlywheel {
         leftFlywheel = hwMap.get(DcMotor.class, "leftFlyWheel");
         rightFlywheel = hwMap.get(DcMotor.class, "rightFlyWheel");
 
-        leftFlywheel.setDirection(DcMotorSimple.Direction.REVERSE);
+        rightFlywheel.setDirection(DcMotorSimple.Direction.REVERSE);
 
     }
 

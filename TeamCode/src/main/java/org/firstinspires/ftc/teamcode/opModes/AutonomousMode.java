@@ -7,7 +7,7 @@ import org.firstinspires.ftc.teamcode.mechanisms.MecanumDrive;
 @Autonomous
 public class AutonomousMode extends LinearOpMode {
 
-    private MecanumDrive drive = new MecanumDrive();
+    MecanumDrive drive = new MecanumDrive();
 
     @Override
     public void runOpMode() throws InterruptedException {
