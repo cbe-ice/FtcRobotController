@@ -15,11 +15,9 @@ public class TeleOpMode extends OpMode {
     DoubleFlywheel shoot = new DoubleFlywheel();
 
     double forward, strafe, rotate;
-    double intakeSpeed, loadSpeed;
-    double shootSpeed;
-    boolean speedSwitch;
-    boolean intakeSwitch, loadSwitch;
-    boolean shootSwitch;
+    double speedMultiplier;
+    boolean speedSwitch, intakeSwitch, loadSwitch;
+    float shootSwitch;
 
     @Override
     public void init() {
@@ -31,7 +29,7 @@ public class TeleOpMode extends OpMode {
         telemetry.addData("Left Stick", " Movement");
         telemetry.addData("Left Stick Down", " Speed Switch");
         telemetry.addData("Right Stick", " Rotation");
-        telemetry.addData("Button A", " Shoot");
+        telemetry.addData("Right Trigger", " Shoot");
         telemetry.addData("Button X", " Intake Switch");
         telemetry.addData("Button Y", " Load Switch");
 
@@ -45,46 +43,35 @@ public class TeleOpMode extends OpMode {
         strafe = gamepad1.left_stick_x;
         rotate = -gamepad1.right_stick_x;
         speedSwitch = gamepad1.left_stick_button;
-        intakeSpeed = 1;
-        loadSpeed = 1;
-        shootSpeed = 1;
         intakeSwitch = gamepad1.x;
         loadSwitch = gamepad1.y;
-        shootSwitch = gamepad1.a;
+        shootSwitch = gamepad1.right_trigger;
 
 
         if(speedSwitch) {
-
-            drive.drive(forward*0.5, strafe*0.5, rotate*0.5);
+            speedMultiplier = 0.5;
         }
-        else if(!speedSwitch) {
-
-            drive.drive(forward, strafe, rotate);
+        else {
+            speedMultiplier = 1;
         }
 
         if(intakeSwitch) {
-
-            intakeSpeed = 0;
+            intake.intake(0);
         }
-        else if(!intakeSwitch){
-
-            intakeSpeed = 1;
+        else {
+            intake.intake(1);
         }
 
         if(loadSwitch) {
-
-            loadSpeed = 1;
-        }
-        else if(!loadSwitch){
-
-            loadSpeed = 0.5;
+            intake.load(1, 75, 15);
         }
 
-        intake.intake(intakeSpeed, loadSpeed);
-
-        if(shootSwitch) {
-            shoot.shoot(shootSpeed);
+        if(shootSwitch > 0) {
+            shoot.shoot(0.355, 100, 50);
         }
+
+        drive.driveFieldRelative(forward*speedMultiplier, strafe*speedMultiplier, rotate*speedMultiplier);
+
 
 
     }

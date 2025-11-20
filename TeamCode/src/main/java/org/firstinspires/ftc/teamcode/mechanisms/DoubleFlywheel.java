@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 public class DoubleFlywheel {
 
     private DcMotor leftFlywheel, rightFlywheel;
+    double timer;
 
     public void init(HardwareMap hwMap) {
 
@@ -17,9 +18,19 @@ public class DoubleFlywheel {
 
     }
 
-    public void shoot(double shootSpeed) {
-        leftFlywheel.setPower(shootSpeed);
-        rightFlywheel.setPower(shootSpeed);
+    public void shoot(double shootSpeed, double runtime, double cooldown) {
+        if (timer <= runtime) {
+            leftFlywheel.setPower(shootSpeed);
+            rightFlywheel.setPower(shootSpeed);
+            timer += 1;
+        } else if (timer <= runtime + cooldown) {
+            leftFlywheel.setPower(0);
+            rightFlywheel.setPower(0);
+            timer += 1;
+        } else {
+            timer = 0;
+        }
 
     }
+
 }
