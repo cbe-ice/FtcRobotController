@@ -7,17 +7,34 @@ import org.firstinspires.ftc.teamcode.mechanisms.Limelight;
  * Uses the Limelight to track and target game elements.
  * Provides steering corrections and distance estimates for autonomous
  * alignment.
+ * Implements full PID control for smooth tracking.
  */
 public class GoalTargeter {
 
     private final Limelight limelight;
 
-    // Tuning constants
-    private static final double STEERING_KP = 0.03; // Proportional gain for steering
-    private static final double DRIVE_KP = 0.02; // Proportional gain for driving
-    private static final double TARGET_AREA = 5.0; // Target area percentage for ideal distance
-    private static final double TX_TOLERANCE = 2.0; // Degrees of acceptable horizontal error
-    private static final double TA_TOLERANCE = 0.5; // Acceptable area error percentage
+    // Tuning constants (Public for tuning)
+    public static double STEERING_KP = 0.035;
+    public static double STEERING_KI = 0.001;
+    public static double STEERING_KD = 0.002;
+
+    public static double DRIVE_KP = 0.025;
+    public static double DRIVE_KI = 0.0; // Often not needed for drive, P+D is usually enough
+    public static double DRIVE_KD = 0.005;
+
+    public static double TARGET_AREA = 5.0; // Target area percentage for ideal distance
+    public static double TX_TOLERANCE = 1.0; // Degrees of acceptable horizontal error
+    public static double TA_TOLERANCE = 0.5; // Acceptable area error percentage
+
+    // PID State
+    private long lastTime = 0;
+    private double steeringIntegral = 0;
+    private double steeringLastError = 0;
+
+    private double driveIntegral = 0;
+    private double driveLastError = 0;
+
+    private static final double INTEGRAL_MAX = 1.0; // Anti-windup cap
 
     // State
     private VisionData lastVisionData = VisionData.empty();
@@ -40,15 +57,43 @@ public class GoalTargeter {
         LLResult result = limelight.getLatestResult();
 
         if (result != null && result.isValid()) {
-            lastVisionData = VisionData.fromTarget(
-                    result.getTx(),
-                    result.getTy(),
-                    result.getTa());
+            // Check if we have parsing logic for colors (Limelight usually gives classifier
+            // results in specific ways)
+            // For now, we just pass raw detection data.
+            // TODO: Extract color/classifier data from Python results if applicable.
+
+            // Note: We use withLocalization if we have AprilTags (ID != -1), but basic
+            // update uses simple target
+            // If result has fiducials, it's AprilTag.
+            if (!result.getFiducialResults().isEmpty()) {
+                int id = result.getFiducialResults().get(0).getFiducialId();
+                lastVisionData = VisionData.withLocalization(
+                        result.getTx(), result.getTy(), result.getTa(),
+                        id, result.getBotpose(), result.getBotpose_MT2());
+            } else {
+                lastVisionData = VisionData.fromTarget(
+                        result.getTx(),
+                        result.getTy(),
+                        result.getTa());
+            }
+
             isLocked = isOnTarget();
         } else {
             lastVisionData = VisionData.empty();
             isLocked = false;
+            resetPID();
         }
+    }
+
+    /**
+     * Resets PID state variables.
+     */
+    private void resetPID() {
+        steeringIntegral = 0;
+        steeringLastError = 0;
+        driveIntegral = 0;
+        driveLastError = 0;
+        lastTime = System.currentTimeMillis();
     }
 
     /**
@@ -59,11 +104,12 @@ public class GoalTargeter {
      */
     public double getSteeringCorrection() {
         if (!lastVisionData.hasTarget()) {
+            resetPID();
             return 0.0;
         }
 
-        double steer = -lastVisionData.getTx() * STEERING_KP;
-        return clamp(steer, -1.0, 1.0);
+        double error = -lastVisionData.getTx(); // Error is negative of tx (to turn towards 0)
+        return calculatePID(error, STEERING_KP, STEERING_KI, STEERING_KD, true);
     }
 
     /**
@@ -74,13 +120,49 @@ public class GoalTargeter {
      */
     public double getDriveCorrection() {
         if (!lastVisionData.hasTarget()) {
+            resetPID();
             return 0.0;
         }
 
         // Area-based distance estimation
-        double areaError = TARGET_AREA - lastVisionData.getTa();
-        double drive = areaError * DRIVE_KP;
-        return clamp(drive, -1.0, 1.0);
+        double error = TARGET_AREA - lastVisionData.getTa();
+        return calculatePID(error, DRIVE_KP, DRIVE_KI, DRIVE_KD, false);
+    }
+
+    /**
+     * Generic PID calculation.
+     */
+    private double calculatePID(double error, double kP, double kI, double kD, boolean isSteering) {
+        long currentTime = System.currentTimeMillis();
+        double dt = (currentTime - lastTime) / 1000.0;
+
+        // Handle first run or irregular timing
+        if (dt <= 0.0001 || dt > 0.5) {
+            dt = 0.02; // Default to ~50Hz
+        }
+        lastTime = currentTime;
+
+        // Integral with anti-windup
+        double integral = (isSteering ? steeringIntegral : driveIntegral) + (error * dt);
+        if (Math.abs(integral) > INTEGRAL_MAX) {
+            integral = Math.signum(integral) * INTEGRAL_MAX;
+        }
+
+        // Derivative
+        double lastError = isSteering ? steeringLastError : driveLastError;
+        double derivative = (error - lastError) / dt;
+
+        // Store state
+        if (isSteering) {
+            steeringIntegral = integral;
+            steeringLastError = error;
+        } else {
+            driveIntegral = integral;
+            driveLastError = error;
+        }
+
+        double output = (error * kP) + (integral * kI) + (derivative * kD);
+        return clamp(output, -1.0, 1.0);
     }
 
     /**

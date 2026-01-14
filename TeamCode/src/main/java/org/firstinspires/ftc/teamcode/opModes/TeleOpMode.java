@@ -7,6 +7,7 @@ import org.firstinspires.ftc.teamcode.mechanisms.DoubleFlywheel;
 import org.firstinspires.ftc.teamcode.mechanisms.Intake;
 import org.firstinspires.ftc.teamcode.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.mechanisms.MecanumDrive;
+import org.firstinspires.ftc.teamcode.vision.GoalTargeter;
 
 /**
  * Main TeleOp control mode.
@@ -25,11 +26,16 @@ public class TeleOpMode extends OpMode {
     Intake intake = new Intake();
     DoubleFlywheel shoot = new DoubleFlywheel();
     Limelight limelight = new Limelight();
+    GoalTargeter goalTargeter;
 
     double forward, strafe, rotate;
     double speedMultiplier;
     boolean speedSwitch, intakeSwitch, loadSwitch;
     float shootSwitch;
+
+    // Auto-aim state
+    boolean autoAimEnabled = false;
+    boolean lastRightBumper = false;
 
     @Override
     public void init() {
@@ -45,7 +51,10 @@ public class TeleOpMode extends OpMode {
         telemetry.addData("Right Trigger", " Shoot");
         telemetry.addData("Button X", " Intake Switch");
         telemetry.addData("Button Y", " Load Switch");
+        telemetry.addData("Right Bumper", " Toggle Auto-Aim");
         telemetry.addData("D-Pad Up/Down", " Switch Pipeline");
+
+        goalTargeter = new GoalTargeter(limelight);
 
     }
 
@@ -59,6 +68,15 @@ public class TeleOpMode extends OpMode {
         intakeSwitch = gamepad1.x;
         loadSwitch = gamepad1.y;
         shootSwitch = gamepad1.right_trigger;
+
+        // Auto-aim Toggle
+        boolean rightBumper = gamepad1.right_bumper;
+        if (rightBumper && !lastRightBumper) {
+            autoAimEnabled = !autoAimEnabled;
+        }
+        lastRightBumper = rightBumper;
+
+        goalTargeter.update();
 
         if (speedSwitch) {
             speedMultiplier = 0.5;
@@ -95,7 +113,20 @@ public class TeleOpMode extends OpMode {
             return; // Skip other controls
         }
 
-        drive.driveFieldRelative(forward * speedMultiplier, strafe * speedMultiplier, rotate * speedMultiplier);
+        if (autoAimEnabled && goalTargeter.hasTarget()) {
+            // Override controls with auto-aim
+            double drivePower = goalTargeter.getDriveCorrection();
+            double turnPower = goalTargeter.getSteeringCorrection();
+            // Strafe is manual override, or 0
+            double strafePower = strafe * speedMultiplier;
+
+            drive.driveFieldRelative(drivePower, strafePower, turnPower);
+
+            telemetry.addData("Auto-Aim", "ACTIVE");
+        } else {
+            drive.driveFieldRelative(forward * speedMultiplier, strafe * speedMultiplier, rotate * speedMultiplier);
+            telemetry.addData("Auto-Aim", autoAimEnabled ? "SEARCHING" : "OFF");
+        }
 
         // Limelight Control & Telemetry
         if (gamepad1.dpad_up) {

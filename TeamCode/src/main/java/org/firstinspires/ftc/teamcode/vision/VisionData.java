@@ -17,6 +17,13 @@ public class VisionData {
     private final int tagID;
     private final Pose3D botPose;
 
+    // Color/Classifier data
+    private final boolean isGreen;
+    private final boolean isPurple;
+
+    // MegaTag 2 Pose
+    private final Pose3D botPoseMT2;
+
     // Timestamp for data freshness
     private final long timestamp;
 
@@ -26,12 +33,16 @@ public class VisionData {
     /**
      * Creates a VisionData object with target data.
      */
-    public VisionData(double tx, double ty, double ta, int tagID, Pose3D botPose, boolean hasTarget) {
+    public VisionData(double tx, double ty, double ta, int tagID, Pose3D botPose, Pose3D botPoseMT2, boolean isGreen,
+            boolean isPurple, boolean hasTarget) {
         this.tx = tx;
         this.ty = ty;
         this.ta = ta;
         this.tagID = tagID;
         this.botPose = botPose;
+        this.botPoseMT2 = botPoseMT2;
+        this.isGreen = isGreen;
+        this.isPurple = isPurple;
         this.hasTarget = hasTarget;
         this.timestamp = System.currentTimeMillis();
     }
@@ -40,21 +51,36 @@ public class VisionData {
      * Creates an empty VisionData object (no target detected).
      */
     public static VisionData empty() {
-        return new VisionData(0.0, 0.0, 0.0, -1, null, false);
+        return new VisionData(0.0, 0.0, 0.0, -1, null, null, false, false, false);
     }
 
     /**
      * Creates a VisionData object with basic target data (no AprilTag).
      */
     public static VisionData fromTarget(double tx, double ty, double ta) {
-        return new VisionData(tx, ty, ta, -1, null, true);
+        return new VisionData(tx, ty, ta, -1, null, null, false, false, true);
+    }
+
+    /**
+     * Creates a VisionData object with basic target data and color info.
+     */
+    public static VisionData fromColorTarget(double tx, double ty, double ta, boolean isGreen, boolean isPurple) {
+        return new VisionData(tx, ty, ta, -1, null, null, isGreen, isPurple, true);
+    }
+
+    /**
+     * Creates a VisionData object with detailed localization data.
+     */
+    public static VisionData withLocalization(double tx, double ty, double ta, int tagID, Pose3D botPose,
+            Pose3D botPoseMT2) {
+        return new VisionData(tx, ty, ta, tagID, botPose, botPoseMT2, false, false, true);
     }
 
     /**
      * Creates a VisionData object with AprilTag data.
      */
     public static VisionData fromAprilTag(double tx, double ty, double ta, int tagID, Pose3D botPose) {
-        return new VisionData(tx, ty, ta, tagID, botPose, true);
+        return new VisionData(tx, ty, ta, tagID, botPose, null, false, false, true);
     }
 
     // --- Getters ---
@@ -77,6 +103,18 @@ public class VisionData {
 
     public Pose3D getBotPose() {
         return botPose;
+    }
+
+    public Pose3D getBotPoseMT2() {
+        return botPoseMT2;
+    }
+
+    public boolean isGreen() {
+        return isGreen;
+    }
+
+    public boolean isPurple() {
+        return isPurple;
     }
 
     public long getTimestamp() {
@@ -106,7 +144,7 @@ public class VisionData {
         if (!hasTarget) {
             return "VisionData[No Target]";
         }
-        return String.format("VisionData[tx=%.2f, ty=%.2f, ta=%.2f, tagID=%d, age=%dms]",
-                tx, ty, ta, tagID, getAgeMs());
+        return String.format("VisionData[tx=%.2f, ty=%.2f, ta=%.2f, tagID=%d, color=%s, age=%dms]",
+                tx, ty, ta, tagID, isGreen ? "GREEN" : (isPurple ? "PURPLE" : "NONE"), getAgeMs());
     }
 }
