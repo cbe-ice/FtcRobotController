@@ -116,4 +116,32 @@ public class Limelight {
         }
         return null;
     }
+
+    /**
+     * Checks if a specific AprilTag ID is currently visible.
+     *
+     * @param tagId The AprilTag ID to check for.
+     * @return true if the specified tag is visible.
+     */
+    public boolean isTagVisible(int tagId) {
+        LLResult result = getLatestResult();
+        if (result != null && result.isValid()) {
+            for (com.qualcomm.hardware.limelightvision.LLResultTypes.FiducialResult tag : result.getFiducialResults()) {
+                if (tag.getFiducialId() == tagId) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if any valid target is currently visible.
+     *
+     * @return true if a valid target is detected.
+     */
+    public boolean hasTarget() {
+        LLResult result = getLatestResult();
+        return result != null && result.isValid();
+    }
 }

@@ -106,4 +106,20 @@ public class MecanumDrive {
         double newStrafe = r * Math.cos(theta);
         this.drive(newForward, newStrafe, rotate);
     }
+
+    /**
+     * Resets the IMU heading to zero.
+     */
+    public void resetHeading() {
+        imu.resetYaw();
+    }
+
+    /**
+     * Gets the current robot heading in radians.
+     *
+     * @return Heading in radians (CCW positive).
+     */
+    public double getHeading() {
+        return imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+    }
 }

@@ -87,6 +87,14 @@ public class TeleOpMode extends OpMode {
             shoot.shoot(0);
         }
 
+        if (gamepad1.b) {
+            // Emergency Stop
+            drive.drive(0, 0, 0);
+            intake.stopAll();
+            shoot.shoot(0);
+            return; // Skip other controls
+        }
+
         drive.driveFieldRelative(forward * speedMultiplier, strafe * speedMultiplier, rotate * speedMultiplier);
 
         // Limelight Control & Telemetry
