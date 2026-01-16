@@ -47,6 +47,8 @@ public class AutonomousMode extends LinearOpMode {
         SCAN_FOR_ARTIFACT,
         ALIGN_TO_GOAL,
         EXECUTE_ACTION,
+        NAVIGATE_TO_PICKUP,
+        PICKUP_BALL,
         DONE
     }
 
@@ -65,6 +67,10 @@ public class AutonomousMode extends LinearOpMode {
     private boolean targetIsPurple = false;
     private double visionLostTime = 0;
 
+    // 3-ball auto tracking
+    private int ballsScored = 0;
+    private static final int TARGET_BALLS = 3;
+
     // Odometry control gains
     private static final double DRIVE_KP = 0.05;
     private static final double STRAFE_KP = 0.05;
@@ -80,6 +86,11 @@ public class AutonomousMode extends LinearOpMode {
             { 36.0, -12.0, 0.0 } // PPG target
     };
     private static final double[] DEFAULT_TARGET = { 36.0, 0.0, 0.0 };
+
+    // Scoring and pickup positions (calibrate these for your field)
+    private static final double[] SCORING_POSITION = { 36.0, 0.0, 0.0 }; // Where to shoot from
+    private static final double[] PICKUP_POSITION = { 12.0, 0.0, Math.toRadians(180) }; // Ball pickup location
+    private static final double PICKUP_TIMEOUT_SEC = 3.0;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -135,6 +146,14 @@ public class AutonomousMode extends LinearOpMode {
                     runScanForArtifact();
                     break;
 
+                case NAVIGATE_TO_PICKUP:
+                    runNavigateToPickup();
+                    break;
+
+                case PICKUP_BALL:
+                    runPickupBall();
+                    break;
+
                 case DONE:
                     drive.drive(0, 0, 0);
                     intake.stopAll();
@@ -150,6 +169,7 @@ public class AutonomousMode extends LinearOpMode {
             telemetry.addData("Motif", motifDetector.getDetectedMotif().toString());
             telemetry.addLine();
             telemetry.addData("Target", goalTargeter.hasTarget() ? "YES" : "NO");
+            telemetry.addData("Balls Scored", ballsScored + "/" + TARGET_BALLS);
             if (goalTargeter.hasTarget()) {
                 telemetry.addData("  TX", "%.1f°", goalTargeter.getTx());
                 telemetry.addData("  Locked", goalTargeter.isLocked() ? "YES" : "NO");
@@ -350,6 +370,7 @@ public class AutonomousMode extends LinearOpMode {
     /**
      * State: Execute the scoring action.
      * Spins up flywheel, feeds ring, stops.
+     * After scoring, decides whether to pick up more balls or finish.
      */
     private void runExecuteAction() {
         // 0.0 - 1.0 sec: Spin up shooter
@@ -362,12 +383,64 @@ public class AutonomousMode extends LinearOpMode {
             shooter.shoot(SHOOT_SPEED);
             intake.load(1.0, 100, 0); // Continuous load
         }
-        // > 2.0 sec: Stop and finish
+        // > 2.0 sec: Stop and check if more balls needed
         else {
             shooter.shoot(0);
             intake.stopAll();
-            transitionTo(AutoState.DONE);
+            ballsScored++;
+
+            if (ballsScored < TARGET_BALLS) {
+                // More balls to score - go pick up another
+                transitionTo(AutoState.NAVIGATE_TO_PICKUP);
+            } else {
+                // All balls scored - done!
+                transitionTo(AutoState.DONE);
+            }
         }
+    }
+
+    /**
+     * State: Navigate back to pickup location.
+     */
+    private void runNavigateToPickup() {
+        odometry.setTarget(PICKUP_POSITION[0], PICKUP_POSITION[1], PICKUP_POSITION[2]);
+
+        if (odometry.isAtTarget(POSITION_TOLERANCE, HEADING_TOLERANCE)) {
+            drive.drive(0, 0, 0);
+            transitionTo(AutoState.PICKUP_BALL);
+            return;
+        }
+
+        if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
+            telemetry.addData("Warning", "Pickup navigation timeout");
+            transitionTo(AutoState.PICKUP_BALL);
+            return;
+        }
+
+        double forward = odometry.getDriveCorrection(DRIVE_KP, MAX_AUTO_POWER);
+        double strafe = odometry.getStrafeCorrection(STRAFE_KP, MAX_AUTO_POWER);
+        double rotate = odometry.getRotationCorrection(ROTATION_KP, MAX_AUTO_POWER);
+
+        drive.driveFieldRelative(forward, strafe, rotate);
+    }
+
+    /**
+     * State: Pick up a ball using the intake.
+     */
+    private void runPickupBall() {
+        // Run intake to pick up ball
+        intake.intake(1.0);
+
+        if (stateTimer.seconds() > PICKUP_TIMEOUT_SEC) {
+            // Assume ball is loaded, head back to scoring position
+            intake.intake(0);
+            odometry.setTarget(SCORING_POSITION[0], SCORING_POSITION[1], SCORING_POSITION[2]);
+            transitionTo(AutoState.NAVIGATE_TO_TARGET);
+            return;
+        }
+
+        // Slow forward creep while intaking
+        drive.driveFieldRelative(0.15, 0, 0);
     }
 
     /**
