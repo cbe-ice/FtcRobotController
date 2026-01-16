@@ -11,16 +11,16 @@ import org.firstinspires.ftc.teamcode.vision.VisionData;
 
 /**
  * Test OpMode for the vision pipeline.
- * Demonstrates GoalTargeter auto-alignment and MotifDetector pattern
- * recognition.
+ * Demonstrates GoalTargeter auto-alignment, MotifDetector pattern
+ * recognition, and color artifact detection.
  *
  * Controls:
  * - Left Stick: Manual driving (when not auto-aligning)
  * - Right Stick X: Rotation
  * - A: Toggle auto-alignment mode
- * - D-Pad Up: Switch to AprilTag pipeline (0)
- * - D-Pad Down: Switch to color pipeline (1)
- * - D-Pad Left: Switch to neural network pipeline (2)
+ * - D-Pad Up: Switch to AprilTag pipeline
+ * - D-Pad Down: Switch to GREEN color pipeline
+ * - D-Pad Left: Switch to PURPLE color pipeline
  */
 @TeleOp(name = "Vision Test", group = "Test")
 public class VisionTestOpMode extends OpMode {
@@ -69,11 +69,11 @@ public class VisionTestOpMode extends OpMode {
 
         // Pipeline switching
         if (gamepad1.dpad_up) {
-            goalTargeter.setPipeline(0); // AprilTags
+            limelight.switchPipeline(Limelight.PIPELINE_APRILTAG);
         } else if (gamepad1.dpad_down) {
-            goalTargeter.setPipeline(1); // Color tracking
+            limelight.switchPipeline(Limelight.PIPELINE_GREEN);
         } else if (gamepad1.dpad_left) {
-            goalTargeter.setPipeline(2); // Neural network
+            limelight.switchPipeline(Limelight.PIPELINE_PURPLE);
         }
 
         // Driving logic
@@ -95,6 +95,23 @@ public class VisionTestOpMode extends OpMode {
 
         // Telemetry
         telemetry.addData("Mode", autoAlignEnabled ? "AUTO-ALIGN" : "MANUAL");
+
+        // Active Pipeline
+        String pipelineName;
+        switch (limelight.getCurrentPipeline()) {
+            case Limelight.PIPELINE_APRILTAG:
+                pipelineName = "AprilTag";
+                break;
+            case Limelight.PIPELINE_GREEN:
+                pipelineName = "GREEN Color";
+                break;
+            case Limelight.PIPELINE_PURPLE:
+                pipelineName = "PURPLE Color";
+                break;
+            default:
+                pipelineName = "Pipeline " + limelight.getCurrentPipeline();
+        }
+        telemetry.addData("Pipeline", pipelineName);
         telemetry.addLine();
 
         // GoalTargeter data
@@ -104,6 +121,19 @@ public class VisionTestOpMode extends OpMode {
             telemetry.addData("  TY (vert)", "%.1f°", goalTargeter.getTy());
             telemetry.addData("  TA (area)", "%.2f%%", goalTargeter.getTa());
             telemetry.addData("  Locked", goalTargeter.isLocked() ? "YES ✓" : "NO");
+        }
+        telemetry.addLine();
+
+        // Color Detection
+        telemetry.addData("Color Detection", "---");
+        if (visionData.hasTarget()) {
+            if (visionData.isGreen()) {
+                telemetry.addData("  Artifact", "🟢 GREEN");
+            } else if (visionData.isPurple()) {
+                telemetry.addData("  Artifact", "🟣 PURPLE");
+            } else {
+                telemetry.addData("  Artifact", "None (not color pipeline)");
+            }
         }
         telemetry.addLine();
 

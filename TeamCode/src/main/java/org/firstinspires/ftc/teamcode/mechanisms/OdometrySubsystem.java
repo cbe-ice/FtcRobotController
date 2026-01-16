@@ -8,8 +8,13 @@ import com.qualcomm.robotcore.hardware.IMU;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 /**
- * Reusable 3-wheel dead-wheel odometry subsystem.
+ * 2-wheel dead-wheel odometry subsystem with IMU heading.
  * Tracks robot position (x, y) and heading on the field.
+ * 
+ * Configuration:
+ * - Forward encoder: measures forward/backward motion (4.75" from center)
+ * - Perpendicular encoder: measures strafe/lateral motion (6.5" from center)
+ * - IMU: provides heading
  *
  * Coordinate system:
  * - X: Forward/backward (positive = forward)
@@ -19,15 +24,17 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 public class OdometrySubsystem {
 
     // Hardware
-    private DcMotorEx leftEncoder, rightEncoder, perpEncoder;
+    private DcMotorEx forwardEncoder, perpEncoder;
     private IMU imu;
 
     // Odometry parameters (TUNE THESE FOR YOUR ROBOT)
     private static final double TICKS_PER_REV = 8192.0; // REV Through Bore Encoder
-    private static final double WHEEL_RADIUS = 1.0; // inches (for 2" omni wheel)
+    private static final double WHEEL_RADIUS = 1.88976378; // inches (48mm wheel)
     private static final double TICKS_PER_INCH = TICKS_PER_REV / (2.0 * Math.PI * WHEEL_RADIUS);
-    private static final double TRACK_WIDTH = 12.0; // inches between parallel encoders
-    private static final double FORWARD_OFFSET = 6.0; // perpendicular encoder offset from center
+
+    // Encoder offsets from robot center (for rotation compensation)
+    private static final double FORWARD_ENCODER_OFFSET = 4.75; // forward encoder distance from center
+    private static final double PERP_ENCODER_OFFSET = 6.5; // perpendicular encoder distance from center
 
     // Position state
     private double x = 0.0;
@@ -35,8 +42,7 @@ public class OdometrySubsystem {
     private double heading = 0.0;
 
     // Previous encoder values
-    private int lastLeftPos = 0;
-    private int lastRightPos = 0;
+    private int lastForwardPos = 0;
     private int lastPerpPos = 0;
     private double lastHeading = 0.0;
 
@@ -52,21 +58,19 @@ public class OdometrySubsystem {
      */
     public void init(HardwareMap hwMap) {
         // Configure encoders (adjust names to match your configuration)
-        leftEncoder = hwMap.get(DcMotorEx.class, "leftEncoder");
-        rightEncoder = hwMap.get(DcMotorEx.class, "rightEncoder");
+        forwardEncoder = hwMap.get(DcMotorEx.class, "forwardEncoder");
         perpEncoder = hwMap.get(DcMotorEx.class, "perpEncoder");
 
         // Set encoder directions (adjust if needed)
-        leftEncoder.setDirection(DcMotor.Direction.REVERSE);
-        rightEncoder.setDirection(DcMotor.Direction.FORWARD);
+        forwardEncoder.setDirection(DcMotor.Direction.FORWARD);
         perpEncoder.setDirection(DcMotor.Direction.FORWARD);
 
-        // Initialize IMU
+        // Initialize IMU - orientation must match MecanumDrive for consistency
         imu = hwMap.get(IMU.class, "imu");
         IMU.Parameters imuParams = new IMU.Parameters(
                 new RevHubOrientationOnRobot(
-                        RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                        RevHubOrientationOnRobot.UsbFacingDirection.FORWARD));
+                        RevHubOrientationOnRobot.LogoFacingDirection.LEFT,
+                        RevHubOrientationOnRobot.UsbFacingDirection.UP));
         imu.initialize(imuParams);
 
         reset();
@@ -76,8 +80,7 @@ public class OdometrySubsystem {
      * Resets position to origin and zeroes encoders.
      */
     public void reset() {
-        lastLeftPos = leftEncoder.getCurrentPosition();
-        lastRightPos = rightEncoder.getCurrentPosition();
+        lastForwardPos = forwardEncoder.getCurrentPosition();
         lastPerpPos = perpEncoder.getCurrentPosition();
 
         imu.resetYaw();
@@ -104,34 +107,31 @@ public class OdometrySubsystem {
      */
     public void update() {
         // Read current encoder positions
-        int currentLeftPos = leftEncoder.getCurrentPosition();
-        int currentRightPos = rightEncoder.getCurrentPosition();
+        int currentForwardPos = forwardEncoder.getCurrentPosition();
         int currentPerpPos = perpEncoder.getCurrentPosition();
         double currentHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
         // Calculate deltas
-        int deltaLeft = currentLeftPos - lastLeftPos;
-        int deltaRight = currentRightPos - lastRightPos;
+        int deltaForward = currentForwardPos - lastForwardPos;
         int deltaPerp = currentPerpPos - lastPerpPos;
 
         // Update last positions
-        lastLeftPos = currentLeftPos;
-        lastRightPos = currentRightPos;
+        lastForwardPos = currentForwardPos;
         lastPerpPos = currentPerpPos;
 
         // Convert ticks to inches
-        double leftDist = deltaLeft / TICKS_PER_INCH;
-        double rightDist = deltaRight / TICKS_PER_INCH;
+        double forwardDist = deltaForward / TICKS_PER_INCH;
         double perpDist = deltaPerp / TICKS_PER_INCH;
 
-        // Calculate change in heading
+        // Calculate change in heading from IMU
         double deltaHeading = AngleUnit.normalizeRadians(currentHeading - lastHeading);
 
         // Calculate local movement (robot-relative)
-        double localDeltaX = (leftDist + rightDist) / 2.0;
-        double localDeltaY = perpDist - (FORWARD_OFFSET * deltaHeading);
+        // Compensate for encoder arc during rotation
+        double localDeltaX = forwardDist - (FORWARD_ENCODER_OFFSET * deltaHeading);
+        double localDeltaY = perpDist - (PERP_ENCODER_OFFSET * deltaHeading);
 
-        // Average heading for integration
+        // Average heading for integration (more accurate during turns)
         double avgHeading = lastHeading + (deltaHeading / 2.0);
 
         // Convert to global coordinates (field-relative)

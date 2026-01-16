@@ -44,6 +44,7 @@ public class AutonomousMode extends LinearOpMode {
         INIT,
         SCAN_FOR_MOTIF,
         NAVIGATE_TO_TARGET,
+        SCAN_FOR_ARTIFACT,
         ALIGN_TO_GOAL,
         EXECUTE_ACTION,
         DONE
@@ -54,8 +55,15 @@ public class AutonomousMode extends LinearOpMode {
     // Configuration
     private static final double SCAN_TIMEOUT_SEC = 3.0;
     private static final double NAV_TIMEOUT_SEC = 8.0;
+    private static final double ARTIFACT_SCAN_TIMEOUT_SEC = 2.0;
     private static final double ALIGN_TIMEOUT_SEC = 5.0;
+    private static final double VISION_LOSS_TIMEOUT_SEC = 1.5;
     private static final double SHOOT_SPEED = 0.55; // Adjusted for autonomous
+
+    // Detected artifact type
+    private boolean targetIsGreen = false;
+    private boolean targetIsPurple = false;
+    private double visionLostTime = 0;
 
     // Odometry control gains
     private static final double DRIVE_KP = 0.05;
@@ -121,6 +129,10 @@ public class AutonomousMode extends LinearOpMode {
 
                 case EXECUTE_ACTION:
                     runExecuteAction();
+                    break;
+
+                case SCAN_FOR_ARTIFACT:
+                    runScanForArtifact();
                     break;
 
                 case DONE:
@@ -226,17 +238,17 @@ public class AutonomousMode extends LinearOpMode {
         if (odometry.isAtTarget(POSITION_TOLERANCE, HEADING_TOLERANCE)) {
             // Reached target position
             drive.drive(0, 0, 0);
-            // Switch to vision tracking pipeline
-            limelight.switchPipeline(1);
-            transitionTo(AutoState.ALIGN_TO_GOAL);
+            // Switch to color pipeline for artifact scanning
+            limelight.switchPipeline(Limelight.PIPELINE_GREEN);
+            transitionTo(AutoState.SCAN_FOR_ARTIFACT);
             return;
         }
 
         if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
-            // Timeout - proceed to alignment anyway
+            // Timeout - proceed to artifact scan anyway
             telemetry.addData("Warning", "Navigation timeout");
-            limelight.switchPipeline(1);
-            transitionTo(AutoState.ALIGN_TO_GOAL);
+            limelight.switchPipeline(Limelight.PIPELINE_GREEN);
+            transitionTo(AutoState.SCAN_FOR_ARTIFACT);
             return;
         }
 
@@ -250,11 +262,15 @@ public class AutonomousMode extends LinearOpMode {
 
     /**
      * State: Fine-align to goal using vision feedback.
+     * Includes vision loss fallback.
      */
     private void runAlignToGoal() {
+        VisionData visionData = goalTargeter.getVisionData();
+
         if (goalTargeter.isLocked()) {
             // Locked on target
             drive.drive(0, 0, 0);
+            visionLostTime = 0;
             transitionTo(AutoState.EXECUTE_ACTION);
             return;
         }
@@ -267,13 +283,67 @@ public class AutonomousMode extends LinearOpMode {
         }
 
         if (goalTargeter.hasTarget()) {
-            // Use vision-based corrections
+            // Reset vision lost timer
+            visionLostTime = 0;
+            // Use vision-based corrections with field-relative control
             double steer = goalTargeter.getSteeringCorrection();
             double forward = goalTargeter.getDriveCorrection();
-            drive.drive(forward, 0, steer);
+            drive.driveFieldRelative(forward, 0, steer);
         } else {
-            // No target - slow search rotation
-            drive.drive(0, 0, 0.15);
+            // Vision lost - track time
+            if (visionLostTime == 0) {
+                visionLostTime = runtime.seconds();
+            }
+
+            // Check for vision loss timeout
+            if (runtime.seconds() - visionLostTime > VISION_LOSS_TIMEOUT_SEC) {
+                telemetry.addData("Warning", "Vision lost - proceeding with last known position");
+                drive.drive(0, 0, 0);
+                transitionTo(AutoState.EXECUTE_ACTION);
+                return;
+            }
+
+            // No target - slow search rotation (field-relative for consistency)
+            drive.driveFieldRelative(0, 0, 0.15);
+        }
+    }
+
+    /**
+     * State: Scan for colored artifacts.
+     * Switches to color pipelines to detect green/purple.
+     */
+    private void runScanForArtifact() {
+        VisionData visionData = goalTargeter.getVisionData();
+
+        // Check for color detection
+        if (visionData.hasTarget()) {
+            if (visionData.isGreen()) {
+                targetIsGreen = true;
+                targetIsPurple = false;
+                telemetry.addData("Artifact", "GREEN detected");
+                transitionTo(AutoState.ALIGN_TO_GOAL);
+                return;
+            } else if (visionData.isPurple()) {
+                targetIsGreen = false;
+                targetIsPurple = true;
+                telemetry.addData("Artifact", "PURPLE detected");
+                transitionTo(AutoState.ALIGN_TO_GOAL);
+                return;
+            }
+        }
+
+        if (stateTimer.seconds() > ARTIFACT_SCAN_TIMEOUT_SEC) {
+            // Timeout - proceed without color info
+            telemetry.addData("Warning", "Artifact scan timeout");
+            transitionTo(AutoState.ALIGN_TO_GOAL);
+            return;
+        }
+
+        // Alternate between green and purple pipelines
+        if ((int) (stateTimer.seconds() * 2) % 2 == 0) {
+            limelight.switchPipeline(Limelight.PIPELINE_GREEN);
+        } else {
+            limelight.switchPipeline(Limelight.PIPELINE_PURPLE);
         }
     }
 

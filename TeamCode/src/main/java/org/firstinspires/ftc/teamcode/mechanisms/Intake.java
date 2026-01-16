@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.mechanisms;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 /**
  * Subsystem for the robot's intake mechanism.
@@ -10,7 +11,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 public class Intake {
 
     private DcMotor intakeMotor, loadMotor;
-    double timer = 0;
+    private ElapsedTime loadTimer = new ElapsedTime();
+    private boolean timerRunning = false;
 
     /**
      * Initializes the intake hardware.
@@ -18,9 +20,9 @@ public class Intake {
      * @param hwMap The hardware map from the OpMode.
      */
     public void init(HardwareMap hwMap) {
-
         intakeMotor = hwMap.get(DcMotor.class, "intakeMotor");
         loadMotor = hwMap.get(DcMotor.class, "loadMotor");
+        loadTimer.reset();
     }
 
     /**
@@ -34,23 +36,31 @@ public class Intake {
 
     /**
      * Controls the loading mechanism with a pulsed action.
-     * WARNING: This method relies on loop count for timing, which is inconsistent.
-     * Consider using System.currentTimeMillis() or ElapsedTime for better accuracy.
+     * Uses real-time based timing for consistent behavior regardless of loop
+     * frequency.
      * 
-     * @param loadSpeed Power level for the loader
-     * @param interval  Number of loops to run the loader
-     * @param cooldown  Number of loops to pause the loader
+     * @param loadSpeed  Power level for the loader
+     * @param intervalMs Milliseconds to run the loader
+     * @param cooldownMs Milliseconds to pause the loader
      */
-    public void load(double loadSpeed, double interval, double cooldown) {
+    public void load(double loadSpeed, double intervalMs, double cooldownMs) {
+        // Start timer on first call
+        if (!timerRunning) {
+            loadTimer.reset();
+            timerRunning = true;
+        }
 
-        if (timer <= interval) {
+        double elapsedMs = loadTimer.milliseconds();
+
+        if (elapsedMs < intervalMs) {
+            // Active phase: run loader
             loadMotor.setPower(loadSpeed);
-            timer += 1;
-        } else if (timer <= interval + cooldown) {
+        } else if (elapsedMs < intervalMs + cooldownMs) {
+            // Cooldown phase: stop loader
             loadMotor.setPower(0);
-            timer += 1;
         } else {
-            timer = 0;
+            // Cycle complete: reset timer
+            loadTimer.reset();
         }
     }
 
@@ -61,6 +71,7 @@ public class Intake {
     public void stopAll() {
         intakeMotor.setPower(0);
         loadMotor.setPower(0);
-        timer = 0;
+        timerRunning = false;
+        loadTimer.reset();
     }
 }

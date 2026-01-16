@@ -1,17 +1,27 @@
 package org.firstinspires.ftc.teamcode.mechanisms;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Subsystem for interacting with the Limelight 3A vision sensor.
  */
 public class Limelight {
 
+    // Pipeline Constants
+    public static final int PIPELINE_APRILTAG = 0;
+    public static final int PIPELINE_GREEN = 1;
+    public static final int PIPELINE_PURPLE = 2;
+
     private Limelight3A limelight;
+    private int currentPipeline = PIPELINE_APRILTAG;
 
     /**
      * Initializes the Limelight hardware.
@@ -79,7 +89,30 @@ public class Limelight {
      * @param index The index of the pipeline to switch to (0-9).
      */
     public void switchPipeline(int index) {
+        currentPipeline = index;
         limelight.pipelineSwitch(index);
+    }
+
+    /**
+     * Gets the currently active pipeline index.
+     * 
+     * @return The current pipeline index.
+     */
+    public int getCurrentPipeline() {
+        return currentPipeline;
+    }
+
+    /**
+     * Gets the color detection results from the current pipeline.
+     * 
+     * @return List of ColorResult objects, or empty list if none.
+     */
+    public List<LLResultTypes.ColorResult> getColorResults() {
+        LLResult result = getLatestResult();
+        if (result != null && result.isValid()) {
+            return result.getColorResults();
+        }
+        return Collections.emptyList();
     }
 
     /**

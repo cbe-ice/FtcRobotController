@@ -126,6 +126,15 @@ public class VisionData {
     }
 
     /**
+     * Checks if this data contains valid localization pose data.
+     * 
+     * @return true if botPose or botPoseMT2 is available.
+     */
+    public boolean hasValidPose() {
+        return hasTarget && (botPose != null || botPoseMT2 != null);
+    }
+
+    /**
      * Checks if the data is recent (within specified milliseconds).
      */
     public boolean isFresh(long maxAgeMs) {

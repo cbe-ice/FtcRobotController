@@ -8,6 +8,7 @@ import org.firstinspires.ftc.teamcode.mechanisms.Intake;
 import org.firstinspires.ftc.teamcode.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.mechanisms.MecanumDrive;
 import org.firstinspires.ftc.teamcode.vision.GoalTargeter;
+import org.firstinspires.ftc.teamcode.vision.VisionData;
 
 /**
  * Main TeleOp control mode.
@@ -128,16 +129,45 @@ public class TeleOpMode extends OpMode {
             telemetry.addData("Auto-Aim", autoAimEnabled ? "SEARCHING" : "OFF");
         }
 
-        // Limelight Control & Telemetry
+        // Pipeline Control
         if (gamepad1.dpad_up) {
-            limelight.switchPipeline(0); // Example: Pipeline 0 for AprilTags
+            limelight.switchPipeline(Limelight.PIPELINE_APRILTAG);
         } else if (gamepad1.dpad_down) {
-            limelight.switchPipeline(1); // Example: Pipeline 1 for Neural Network
+            limelight.switchPipeline(Limelight.PIPELINE_GREEN);
+        } else if (gamepad1.dpad_left) {
+            limelight.switchPipeline(Limelight.PIPELINE_PURPLE);
         }
 
-        telemetry.addData("Limelight TX", limelight.getTx());
-        telemetry.addData("Limelight TY", limelight.getTy());
-        telemetry.addData("Limelight TA", limelight.getTa());
+        // Pipeline Name
+        String pipelineName;
+        switch (limelight.getCurrentPipeline()) {
+            case Limelight.PIPELINE_APRILTAG:
+                pipelineName = "AprilTag";
+                break;
+            case Limelight.PIPELINE_GREEN:
+                pipelineName = "GREEN";
+                break;
+            case Limelight.PIPELINE_PURPLE:
+                pipelineName = "PURPLE";
+                break;
+            default:
+                pipelineName = "Pipeline " + limelight.getCurrentPipeline();
+        }
+        telemetry.addData("Pipeline", pipelineName);
 
+        // Vision Telemetry
+        VisionData visionData = goalTargeter.getVisionData();
+        telemetry.addData("Target", visionData.hasTarget() ? "DETECTED" : "---");
+        telemetry.addData("TX/TY/TA", "%.1f° / %.1f° / %.1f%%",
+                limelight.getTx(), limelight.getTy(), limelight.getTa());
+
+        // Color Detection
+        if (visionData.isGreen()) {
+            telemetry.addData("Artifact", "🟢 GREEN");
+        } else if (visionData.isPurple()) {
+            telemetry.addData("Artifact", "🟣 PURPLE");
+        }
+
+        telemetry.update();
     }
 }

@@ -57,20 +57,29 @@ public class GoalTargeter {
         LLResult result = limelight.getLatestResult();
 
         if (result != null && result.isValid()) {
-            // Check if we have parsing logic for colors (Limelight usually gives classifier
-            // results in specific ways)
-            // For now, we just pass raw detection data.
-            // TODO: Extract color/classifier data from Python results if applicable.
+            int pipeline = limelight.getCurrentPipeline();
 
-            // Note: We use withLocalization if we have AprilTags (ID != -1), but basic
-            // update uses simple target
-            // If result has fiducials, it's AprilTag.
-            if (!result.getFiducialResults().isEmpty()) {
+            // Check for color pipeline results
+            if (pipeline == Limelight.PIPELINE_GREEN || pipeline == Limelight.PIPELINE_PURPLE) {
+                if (!limelight.getColorResults().isEmpty()) {
+                    boolean isGreen = (pipeline == Limelight.PIPELINE_GREEN);
+                    boolean isPurple = (pipeline == Limelight.PIPELINE_PURPLE);
+                    lastVisionData = VisionData.fromColorTarget(
+                            result.getTx(), result.getTy(), result.getTa(),
+                            isGreen, isPurple);
+                } else {
+                    lastVisionData = VisionData.empty();
+                }
+            }
+            // Check for AprilTag results
+            else if (!result.getFiducialResults().isEmpty()) {
                 int id = result.getFiducialResults().get(0).getFiducialId();
                 lastVisionData = VisionData.withLocalization(
                         result.getTx(), result.getTy(), result.getTa(),
                         id, result.getBotpose(), result.getBotpose_MT2());
-            } else {
+            }
+            // Default: basic target data
+            else {
                 lastVisionData = VisionData.fromTarget(
                         result.getTx(),
                         result.getTy(),
