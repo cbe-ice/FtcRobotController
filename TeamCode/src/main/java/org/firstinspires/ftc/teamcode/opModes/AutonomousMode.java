@@ -369,33 +369,48 @@ public class AutonomousMode extends LinearOpMode {
 
     /**
      * State: Execute the scoring action.
-     * Spins up flywheel, feeds ring, stops.
-     * After scoring, decides whether to pick up more balls or finish.
+     * Shoots all 3 preloaded balls in sequence with delays.
+     * Timing: spin up (1s) -> shoot ball 1 (1s) -> delay (0.5s) -> shoot ball 2 (1s) -> delay (0.5s) -> shoot ball 3 (1s) -> done
      */
     private void runExecuteAction() {
-        // 0.0 - 1.0 sec: Spin up shooter
-        if (stateTimer.seconds() < 1.0) {
-            shooter.shoot(SHOOT_SPEED);
+        double time = stateTimer.seconds();
+        
+        // Keep shooter spinning throughout
+        shooter.shoot(SHOOT_SPEED);
+        
+        // Timeline for 3 balls:
+        // 0.0 - 1.0: Spin up (no feeding)
+        // 1.0 - 2.0: Feed ball 1
+        // 2.0 - 2.5: Pause
+        // 2.5 - 3.5: Feed ball 2
+        // 3.5 - 4.0: Pause
+        // 4.0 - 5.0: Feed ball 3
+        // 5.0+: Done
+        
+        if (time < 1.0) {
+            // Spin up shooter
             intake.stopAll();
-        }
-        // 1.0 - 2.0 sec: Feed ring
-        else if (stateTimer.seconds() < 2.0) {
-            shooter.shoot(SHOOT_SPEED);
-            intake.load(1.0, 100, 0); // Continuous load
-        }
-        // > 2.0 sec: Stop and check if more balls needed
-        else {
+        } else if (time < 2.0) {
+            // Feed ball 1
+            intake.load(1.0, 100, 0);
+        } else if (time < 2.5) {
+            // Pause between shots
+            intake.stopAll();
+        } else if (time < 3.5) {
+            // Feed ball 2
+            intake.load(1.0, 100, 0);
+        } else if (time < 4.0) {
+            // Pause between shots
+            intake.stopAll();
+        } else if (time < 5.0) {
+            // Feed ball 3
+            intake.load(1.0, 100, 0);
+        } else {
+            // All 3 balls shot - done!
             shooter.shoot(0);
             intake.stopAll();
-            ballsScored++;
-
-            if (ballsScored < TARGET_BALLS) {
-                // More balls to score - go pick up another
-                transitionTo(AutoState.NAVIGATE_TO_PICKUP);
-            } else {
-                // All balls scored - done!
-                transitionTo(AutoState.DONE);
-            }
+            ballsScored = TARGET_BALLS;
+            transitionTo(AutoState.DONE);
         }
     }
 
