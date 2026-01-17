@@ -129,7 +129,7 @@ public class TeleOpMode extends OpMode {
 
             telemetry.addData("Auto-Aim", "ACTIVE");
         } else {
-            drive.driveFieldRelative(forward * speedMultiplier, strafe * speedMultiplier, rotate * speedMultiplier);
+            drive.drive(forward * speedMultiplier, strafe * speedMultiplier, rotate * speedMultiplier);
             telemetry.addData("Auto-Aim", autoAimEnabled ? "SEARCHING" : "OFF");
         }
 
