@@ -34,7 +34,7 @@ public class VisionData {
      * Creates a VisionData object with target data.
      */
     public VisionData(double tx, double ty, double ta, int tagID, Pose3D botPose, Pose3D botPoseMT2, boolean isGreen,
-                      boolean isPurple, boolean hasTarget) {
+            boolean isPurple, boolean hasTarget) {
         this.tx = tx;
         this.ty = ty;
         this.ta = ta;
@@ -72,7 +72,7 @@ public class VisionData {
      * Creates a VisionData object with detailed localization data.
      */
     public static VisionData withLocalization(double tx, double ty, double ta, int tagID, Pose3D botPose,
-                                              Pose3D botPoseMT2) {
+            Pose3D botPoseMT2) {
         return new VisionData(tx, ty, ta, tagID, botPose, botPoseMT2, false, false, true);
     }
 
@@ -127,7 +127,7 @@ public class VisionData {
 
     /**
      * Checks if this data contains valid localization pose data.
-     *
+     * 
      * @return true if botPose or botPoseMT2 is available.
      */
     public boolean hasValidPose() {

@@ -25,7 +25,7 @@ public class Limelight {
 
     /**
      * Initializes the Limelight hardware.
-     *
+     * 
      * @param hwMap The hardware map from the OpMode.
      */
     public void init(HardwareMap hwMap) {
@@ -37,7 +37,7 @@ public class Limelight {
 
     /**
      * Gets the latest result from the Limelight.
-     *
+     * 
      * @return The latest LLResult, or null if none available.
      */
     public LLResult getLatestResult() {
@@ -46,7 +46,7 @@ public class Limelight {
 
     /**
      * Gets the horizontal offset from the crosshair to the target.
-     *
+     * 
      * @return tx in degrees, or 0.0 if no target.
      */
     public double getTx() {
@@ -59,7 +59,7 @@ public class Limelight {
 
     /**
      * Gets the vertical offset from the crosshair to the target.
-     *
+     * 
      * @return ty in degrees, or 0.0 if no target.
      */
     public double getTy() {
@@ -72,7 +72,7 @@ public class Limelight {
 
     /**
      * Gets the target area (0% to 100% of image).
-     *
+     * 
      * @return ta, or 0.0 if no target.
      */
     public double getTa() {
@@ -85,7 +85,7 @@ public class Limelight {
 
     /**
      * Switches the active pipeline.
-     *
+     * 
      * @param index The index of the pipeline to switch to (0-9).
      */
     public void switchPipeline(int index) {
@@ -95,7 +95,7 @@ public class Limelight {
 
     /**
      * Gets the currently active pipeline index.
-     *
+     * 
      * @return The current pipeline index.
      */
     public int getCurrentPipeline() {
@@ -104,7 +104,7 @@ public class Limelight {
 
     /**
      * Gets the color detection results from the current pipeline.
-     *
+     * 
      * @return List of ColorResult objects, or empty list if none.
      */
     public List<LLResultTypes.ColorResult> getColorResults() {
@@ -117,7 +117,7 @@ public class Limelight {
 
     /**
      * Updates the robot's orientation for MegaTag 2 localization.
-     *
+     * 
      * @param headingRadians The robot's heading in radians.
      */
     public void updateRobotOrientation(double headingRadians) {
@@ -126,7 +126,7 @@ public class Limelight {
 
     /**
      * Gets the robot's 3D pose from MegaTag 1.
-     *
+     * 
      * @return Pose3D object, or null if invalid.
      */
     public Pose3D getBotPose() {
@@ -139,7 +139,7 @@ public class Limelight {
 
     /**
      * Gets the robot's 3D pose from MegaTag 2 (requires IMU update).
-     *
+     * 
      * @return Pose3D object, or null if invalid.
      */
     public Pose3D getBotPoseMT2() {

@@ -14,7 +14,7 @@ public class DoubleFlywheel {
 
     /**
      * Initializes the flywheel motors.
-     *
+     * 
      * @param hwMap The hardware map from the OpMode.
      */
     public void init(HardwareMap hwMap) {
@@ -28,7 +28,7 @@ public class DoubleFlywheel {
 
     /**
      * Sets the power for both flywheels.
-     *
+     * 
      * @param shootSpeed Power level (0.0 to 1.0 usually)
      */
     public void shoot(double shootSpeed) {

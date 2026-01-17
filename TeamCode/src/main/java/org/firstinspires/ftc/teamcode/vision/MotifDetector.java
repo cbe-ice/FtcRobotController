@@ -3,7 +3,7 @@ package org.firstinspires.ftc.teamcode.vision;
 /**
  * Detects and interprets the MOTIF from the OBELISK AprilTags.
  * OBELISK tags: ID 21 (GPP), ID 22 (PGP), ID 23 (PPG)
- *
+ * 
  * Supports both direct Limelight API and VisionData-based API.
  */
 public class MotifDetector {
@@ -71,7 +71,7 @@ public class MotifDetector {
     /**
      * Updates the detector with new vision data.
      * Call this every loop iteration.
-     *
+     * 
      * @param visionData The latest vision data from Limelight.
      */
     public void update(VisionData visionData) {
@@ -105,7 +105,7 @@ public class MotifDetector {
 
     /**
      * Checks if we have a confident detection (3+ consecutive frames).
-     *
+     * 
      * @return true if confident detection exists.
      */
     public boolean hasConfidentDetection() {
@@ -114,7 +114,7 @@ public class MotifDetector {
 
     /**
      * Gets the detected motif.
-     *
+     * 
      * @return The detected Motif enum, or Motif.UNKNOWN if not detected.
      */
     public Motif getDetectedMotif() {

@@ -16,7 +16,7 @@ public class Intake {
 
     /**
      * Initializes the intake hardware.
-     *
+     * 
      * @param hwMap The hardware map from the OpMode.
      */
     public void init(HardwareMap hwMap) {
@@ -27,7 +27,7 @@ public class Intake {
 
     /**
      * Sets the power of the intake motor.
-     *
+     * 
      * @param intakeSpeed Power level (-1.0 to 1.0)
      */
     public void intake(double intakeSpeed) {
@@ -38,7 +38,7 @@ public class Intake {
      * Controls the loading mechanism with a pulsed action.
      * Uses real-time based timing for consistent behavior regardless of loop
      * frequency.
-     *
+     * 
      * @param loadSpeed  Power level for the loader
      * @param intervalMs Milliseconds to run the loader
      * @param cooldownMs Milliseconds to pause the loader
