@@ -4,7 +4,9 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.mechanisms.DoubleFlywheel;
 import org.firstinspires.ftc.teamcode.mechanisms.Intake;
 import org.firstinspires.ftc.teamcode.mechanisms.Limelight;
@@ -31,7 +33,10 @@ import org.firstinspires.ftc.teamcode.vision.VisionData;
 public class AutonomousMode extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================
-    private enum Alliance { RED, BLUE }
+    private enum Alliance {
+        RED, BLUE
+    }
+
     private Alliance selectedAlliance = Alliance.RED;
 
     // ===================== SUBSYSTEMS =====================
@@ -71,7 +76,7 @@ public class AutonomousMode extends LinearOpMode {
     private static final double ALIGN_TIMEOUT_SEC = 4.0;
     private static final double VISION_LOSS_TIMEOUT_SEC = 1.5;
     private static final double RECOVERY_TIMEOUT_SEC = 3.0;
-    
+
     // Shooting
     private static final double SHOOT_SPEED = 0.55;
     private static final double SHOT_DURATION_SEC = 0.8;
@@ -91,28 +96,28 @@ public class AutonomousMode extends LinearOpMode {
     // ===================== FIELD COORDINATES (inches) =====================
     // Origin: Bottom-left corner of field
     // Robot starts 1.5ft (18 inches) from goal
-    
+
     // Blue Alliance ball positions (right side of field)
     private static final double[][] BLUE_BALL_POSITIONS = {
-        {112.5, 3.0, Math.toRadians(0)},   // GPP - green ball position
-        {112.5, 5.0, Math.toRadians(0)},   // PGP - P ball position
-        {112.5, 7.0, Math.toRadians(0)},   // PPG - P ball position
+            { 112.5, 3.0, Math.toRadians(0) }, // GPP - green ball position
+            { 112.5, 5.0, Math.toRadians(0) }, // PGP - P ball position
+            { 112.5, 7.0, Math.toRadians(0) }, // PPG - P ball position
     };
-    
+
     // Red Alliance ball positions (left side of field)
     private static final double[][] RED_BALL_POSITIONS = {
-        {19.5, 3.0, Math.toRadians(180)},  // GPP - green ball position
-        {19.5, 5.0, Math.toRadians(180)},  // PGP - P ball position
-        {19.5, 7.0, Math.toRadians(180)},  // PPG - P ball position
+            { 19.5, 3.0, Math.toRadians(180) }, // GPP - green ball position
+            { 19.5, 5.0, Math.toRadians(180) }, // PGP - P ball position
+            { 19.5, 7.0, Math.toRadians(180) }, // PPG - P ball position
     };
-    
+
     // Starting positions (1.5ft = 18 inches from goal)
-    private static final double[] BLUE_START = {112.5 - 18.0, 0.0, Math.toRadians(0)};
-    private static final double[] RED_START = {19.5 + 18.0, 0.0, Math.toRadians(180)};
-    
+    private static final double[] BLUE_START = { 112.5 - 18.0, 0.0, Math.toRadians(0) };
+    private static final double[] RED_START = { 19.5 + 18.0, 0.0, Math.toRadians(180) };
+
     // Shooting positions (same as start - shoot from starting position)
-    private static final double[] BLUE_SHOOT_POSITION = {112.5 - 18.0, 0.0, Math.toRadians(0)};
-    private static final double[] RED_SHOOT_POSITION = {19.5 + 18.0, 0.0, Math.toRadians(180)};
+    private static final double[] BLUE_SHOOT_POSITION = { 112.5 - 18.0, 0.0, Math.toRadians(0) };
+    private static final double[] RED_SHOOT_POSITION = { 19.5 + 18.0, 0.0, Math.toRadians(180) };
 
     // ===================== STATE VARIABLES =====================
     private MotifDetector.Motif detectedMotif = MotifDetector.Motif.UNKNOWN;
@@ -156,7 +161,7 @@ public class AutonomousMode extends LinearOpMode {
         // Set starting position based on alliance
         double[] startPos = (selectedAlliance == Alliance.BLUE) ? BLUE_START : RED_START;
         odometry.setPosition(startPos[0], startPos[1], startPos[2]);
-        
+
         RobotLog.d("AUTO", "Starting 6-Ball Auto - Alliance: " + selectedAlliance);
         RobotLog.d("AUTO", "Start position: (" + startPos[0] + ", " + startPos[1] + ")");
 
@@ -257,23 +262,23 @@ public class AutonomousMode extends LinearOpMode {
     // ===================== STATE: SHOOT PRELOADS =====================
     private void runShootPreloads() {
         double time = stateTimer.seconds();
-        
+
         // Keep shooter spinning throughout
         shooter.shoot(SHOOT_SPEED);
-        
+
         // Calculate timing for 3 shots with delays
         // Pattern: spin-up (1s) -> [shoot (0.8s) -> delay (0.5s)] x 3
         double spinUpTime = 1.0;
         double cycleTime = SHOT_DURATION_SEC + SHOT_DELAY_SEC; // 1.3s per ball
-        
+
         if (time < spinUpTime) {
             // Spin up
             intake.stopAll();
         } else {
             double shootingTime = time - spinUpTime;
-            int currentBall = (int)(shootingTime / cycleTime);
+            int currentBall = (int) (shootingTime / cycleTime);
             double timeInCycle = shootingTime % cycleTime;
-            
+
             if (currentBall < 3) {
                 if (timeInCycle < SHOT_DURATION_SEC) {
                     // Feeding ball
@@ -289,7 +294,7 @@ public class AutonomousMode extends LinearOpMode {
                 intake.stopAll();
                 ballsShot = 3;
                 RobotLog.d("AUTO", "Preloads complete - 3 balls shot");
-                
+
                 // Set target for ball pickup
                 setTargetForMotif();
                 transitionTo(AutoState.NAV_TO_BALLS);
@@ -316,7 +321,7 @@ public class AutonomousMode extends LinearOpMode {
         }
 
         // Vision validation (check if odometry drifted significantly)
-        if (goalTargeter.hasTarget() && goalTargeter.getVisionData().hasLocalization()) {
+        if (goalTargeter.hasTarget() && goalTargeter.getVisionData().hasValidPose()) {
             // Compare vision position with odometry - could trigger recovery
             // For now, just log it
             RobotLog.d("AUTO", "Vision validated at nav point");
@@ -334,17 +339,17 @@ public class AutonomousMode extends LinearOpMode {
     private void runPickupBalls() {
         // Run intake continuously
         intake.intake(1.0);
-        
+
         // Slow forward creep while intaking
         drive.driveFieldRelative(0.15, 0, 0);
-        
+
         // Time-based pickup (assume 3 balls collected after timeout)
         if (stateTimer.seconds() > PICKUP_TIMEOUT_SEC) {
             RobotLog.d("AUTO", "Pickup complete - collected balls");
             intake.intake(0);
             drive.drive(0, 0, 0);
             ballsPickedUp = 3;
-            
+
             // Set target for shooting position
             setShootingTarget();
             transitionTo(AutoState.NAV_TO_SHOOT);
@@ -384,14 +389,14 @@ public class AutonomousMode extends LinearOpMode {
     // ===================== STATE: ALIGN AND SHOOT =====================
     private void runAlignAndShoot() {
         double time = stateTimer.seconds();
-        
+
         // First, try to fine-align with vision (first 2 seconds)
         if (time < 2.0) {
             if (goalTargeter.hasTarget()) {
                 visionLostTime = 0;
                 double steer = goalTargeter.getSteeringCorrection();
                 drive.driveFieldRelative(0, 0, steer);
-                
+
                 if (goalTargeter.isLocked()) {
                     RobotLog.d("AUTO", "Vision lock acquired - shooting");
                     // Skip to shooting immediately
@@ -403,33 +408,33 @@ public class AutonomousMode extends LinearOpMode {
                 if (visionLostTime == 0) {
                     visionLostTime = runtime.seconds();
                 }
-                
+
                 if (runtime.seconds() - visionLostTime > VISION_LOSS_TIMEOUT_SEC) {
                     RobotLog.d("AUTO", "Vision lost - shooting from current position");
                     // Proceed to shooting
                 }
-                
+
                 // Slow search rotation
                 drive.driveFieldRelative(0, 0, 0.1);
             }
             return;
         }
-        
+
         // Shooting phase (after alignment or timeout)
         drive.drive(0, 0, 0);
         shooter.shoot(SHOOT_SPEED);
-        
+
         double shootTime = time - 2.0; // Offset for alignment phase
         double spinUpTime = 1.0;
         double cycleTime = SHOT_DURATION_SEC + SHOT_DELAY_SEC;
-        
+
         if (shootTime < spinUpTime) {
             intake.stopAll();
         } else {
             double firingTime = shootTime - spinUpTime;
-            int currentBall = (int)(firingTime / cycleTime);
+            int currentBall = (int) (firingTime / cycleTime);
             double timeInCycle = firingTime % cycleTime;
-            
+
             if (currentBall < 3) {
                 if (timeInCycle < SHOT_DURATION_SEC) {
                     intake.load(1.0, 100, 0);
@@ -448,17 +453,27 @@ public class AutonomousMode extends LinearOpMode {
         }
     }
 
-    // ===================== STATE: RECOVERY =====================
     private void runRecovery() {
         // Attempt to re-localize using AprilTag
-        if (goalTargeter.hasTarget() && goalTargeter.getVisionData().hasLocalization()) {
+        if (goalTargeter.hasTarget() && goalTargeter.getVisionData().hasValidPose()) { // <-- CHANGED
             // Update odometry from vision
             VisionData visionData = goalTargeter.getVisionData();
-            double[] botpose = visionData.getBotpose();
-            if (botpose != null && botpose.length >= 3) {
-                // Convert botpose to field coordinates and update odometry
-                // Note: botpose format depends on Limelight configuration
-                RobotLog.d("AUTO", "Recovery: Re-localized from AprilTag");
+
+            // getBotPose() returns a Pose3D object, not double[]
+            Pose3D botPose = visionData.getBotPose();
+
+            if (botPose != null) {
+                // Extract position from Pose3D
+                // Pose3D uses getPosition() which returns a Position with x, y, z
+                double x = botPose.getPosition().x;
+                double y = botPose.getPosition().y;
+
+                // Update odometry with vision position
+                // You may need to convert units (Limelight often uses meters)
+                // and adjust coordinate system based on your field setup
+                odometry.setPosition(x, y, odometry.getHeading());
+
+                RobotLog.d("AUTO", "Recovery: Re-localized from AprilTag at (" + x + ", " + y + ")");
                 transitionTo(recoveryReturnState);
                 return;
             }
@@ -474,14 +489,13 @@ public class AutonomousMode extends LinearOpMode {
         // Slow rotation to find AprilTag
         drive.drive(0, 0, 0.15);
     }
-
     // ===================== HELPER METHODS =====================
-    
+
     private void setTargetForMotif() {
-        double[][] ballPositions = (selectedAlliance == Alliance.BLUE) 
-            ? BLUE_BALL_POSITIONS 
-            : RED_BALL_POSITIONS;
-        
+        double[][] ballPositions = (selectedAlliance == Alliance.BLUE)
+                ? BLUE_BALL_POSITIONS
+                : RED_BALL_POSITIONS;
+
         int index;
         switch (detectedMotif) {
             case GPP:
@@ -496,26 +510,26 @@ public class AutonomousMode extends LinearOpMode {
             default:
                 index = 0; // Default to GPP
         }
-        
+
         currentTarget = ballPositions[index];
         odometry.setTarget(currentTarget[0], currentTarget[1], currentTarget[2]);
-        RobotLog.d("AUTO", "Target set for " + detectedMotif + ": (" + 
-                   currentTarget[0] + ", " + currentTarget[1] + ")");
+        RobotLog.d("AUTO", "Target set for " + detectedMotif + ": (" +
+                currentTarget[0] + ", " + currentTarget[1] + ")");
     }
 
     private void setShootingTarget() {
-        double[] shootPos = (selectedAlliance == Alliance.BLUE) 
-            ? BLUE_SHOOT_POSITION 
-            : RED_SHOOT_POSITION;
-        
+        double[] shootPos = (selectedAlliance == Alliance.BLUE)
+                ? BLUE_SHOOT_POSITION
+                : RED_SHOOT_POSITION;
+
         currentTarget = shootPos;
         odometry.setTarget(currentTarget[0], currentTarget[1], currentTarget[2]);
         RobotLog.d("AUTO", "Shooting target set: (" + currentTarget[0] + ", " + currentTarget[1] + ")");
     }
 
     private void transitionTo(AutoState newState) {
-        RobotLog.d("AUTO", "Transition: " + currentState + " -> " + newState + 
-                   " at " + String.format("%.1f", runtime.seconds()) + "s");
+        RobotLog.d("AUTO", "Transition: " + currentState + " -> " + newState +
+                " at " + String.format("%.1f", runtime.seconds()) + "s");
         currentState = newState;
         stateTimer.reset();
     }
